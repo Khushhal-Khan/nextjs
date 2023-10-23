@@ -1,58 +1,66 @@
 //import React from 'react'
 
+import { MongoClient, ObjectId } from "mongodb";
 import { Fragment } from "react";
 import MeetupDetail from "../../../components/meetups/MeetupDetail";
 import Head from "next/head";
 
-const MeetupDetails = () => {
+const MeetupDetails = (props) => {
   return (
     <Fragment>
-    <Head>
-      <title>{props.meetupData.title}</title>
-      <meta name="description" content={props.meetupData.description}/>
-    </Head>
+      <Head>
+        <title>{props.meetupData.title}</title>
+        <meta name="description" content={props.meetupData.description} />
+      </Head>
       <MeetupDetail
-        image="https://visitukraine.today/media/blog/previews/z4MpSyGSXd8fYvYFqaoYhlemjscQG9ss3uNN29AS.jpg"
-        title="a first meetup"
-        address="Some street 5, some city"
-        description="the meetup description"
+        image={props.meetupData.image}
+        title={props.meetupData.title}
+        address={props.meetupData.address}
+        description={props.meetupData.description}
       />
     </Fragment>
   );
 };
 
 export const getStaticPaths = async() => {
+   const client = await MongoClient.connect(
+     "mongodb+srv://khushhalkhann555:tvBa6wAaBCaCMm3a@cluster0.7zczb4p.mongodb.net/meetups?retryWrites=true&w=majority"
+   );
+   const db = client.db();
+   const meetupsCollection = db.collection("meetups");
+   const meetups = await meetupsCollection.find({}, {_id:1}).toArray();
+  client.close();
+     
   return {
     fallback: false,
-    paths: [
-      {
-        params: {
-          meetupId: 'm1',
-        },
-      },
-      {
-        params: {
-          meetupId: 'm2',
-        },
-      },
-    ],
+    paths: meetups.map((meetup) => ({
+      params: { meetupId: meetup._id.toString()}
+    }))
   };
 }
 
 export const getStaticProps = async(context) => {
       const meetupId = context.params.meetupId;
-      console.log(meetupId)
+      const client = await MongoClient.connect(
+        "mongodb+srv://khushhalkhann555:tvBa6wAaBCaCMm3a@cluster0.7zczb4p.mongodb.net/meetups?retryWrites=true&w=majority"
+      );
+      const db = client.db();
+      const meetupsCollection = db.collection("meetups");
+      const meetups = await meetupsCollection.find({}, { _id: 1 }).toArray();
+      const selectedMeetup = await meetupsCollection.findOne({
+        _id: ObjectId(meetupId),
+      });
+      client.close();
 
       return {
         props: {
           meetupData: {
-            image:
-              "https://visitukraine.today/media/blog/previews/z4MpSyGSXd8fYvYFqaoYhlemjscQG9ss3uNN29AS.jpg",
-              id:meetupId,
-              title: 'first meetup',
-              address: 'some street',
-              description: 'this is firt meetup',
-          },
+            id: selectedMeetup._id.toString(),
+            title: selectedMeetup.title,
+            address: selectedMeetup.address,
+            image: selectedMeetup.image,
+            description: selectedMeetup.description,
+          }
         },
       };
     }
